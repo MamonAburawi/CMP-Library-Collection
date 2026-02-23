@@ -207,3 +207,174 @@ A library for scalable units (**sdp** for layout sizes and **ssp** for text size
 ---
 
 
+
+---
+
+# Compose Media Player 🎬
+
+A powerful, lightweight Media Player for **Compose Multiplatform**. One codebase to handle video playback across all major platforms.
+
+* **Support:** Android, iOS, Desktop, Web (Wasm/JS)
+* **Link:** [ComposeMediaPlayer](https://github.com/kdroidFilter/ComposeMediaPlayer)
+
+## 🛠 Usage
+
+Integrating the media player into your Composable is straightforward. Below is a complete example of a custom video player with controls.
+
+```kotlin
+@Composable
+fun VideoPlayer(videoUrl: String) {
+    val playerState = rememberVideoPlayerState()
+
+    // Extract duration and calculate current time for the UI
+    val durationMs = playerState.metadata.duration ?: 0L
+    val currentTimeMs = (playerState.sliderPos / 1000f * durationMs).toLong()
+
+    // Initialize/Load Video
+    LaunchedEffect(videoUrl) {
+        playerState.openUri(videoUrl)
+    }
+
+    Column(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+        Box(
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            // The Video Surface
+            VideoPlayerSurface(
+                playerState = playerState,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit
+            ) {
+                // UI Overlay Layer
+                Box(modifier = Modifier.fillMaxSize()) {
+
+                    // Loading Indicator
+                    if (playerState.isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.align(Alignment.Center),
+                            color = Color.Green
+                        )
+                    }
+
+                    // Error Handling
+                    playerState.error?.let { error ->
+                        Text(
+                            text = "Error: $error",
+                            color = Color.Red,
+                            modifier = Modifier.align(Alignment.Center).padding(16.dp)
+                        )
+                    }
+
+                    // Bottom Control Bar
+                    PlayerControls(playerState, currentTimeMs, durationMs)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BoxScope.PlayerControls(
+    playerState: VideoPlayerState,
+    currentTimeMs: Long,
+    durationMs: Long
+) {
+    Column(
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .fillMaxWidth()
+            .background(Color.Black.copy(alpha = 0.6f))
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        // --- Seek Bar & Time ---
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(formatDuration(currentTimeMs), color = Color.White, fontSize = 12.sp)
+
+            Slider(
+                value = playerState.sliderPos,
+                onValueChange = {
+                    playerState.sliderPos = it
+                    playerState.userDragging = true
+                },
+                onValueChangeFinished = {
+                    playerState.userDragging = false
+                    playerState.seekTo(playerState.sliderPos)
+                },
+                valueRange = 0f..1000f,
+                modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
+                colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = Color.Red)
+            )
+
+            Text(formatDuration(durationMs), color = Color.White, fontSize = 12.sp)
+        }
+
+        // --- Action Buttons ---
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Play/Pause
+            IconButton(onClick = { if (playerState.isPlaying) playerState.pause() else playerState.play() }) {
+                Icon(
+                    painter = if (playerState.isPlaying) painterResource(Res.drawable.ic_pause) else painterResource(Res.drawable.ic_play),
+                    contentDescription = "Play/Pause",
+                    tint = Color.White,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+
+            // Stop
+            IconButton(onClick = { playerState.stop() }) {
+                Icon(painterResource(Res.drawable.ic_stop), "Stop", tint = Color.White)
+            }
+
+            // Volume
+            Icon(painterResource(Res.drawable.ic_volume_up), null, tint = Color.White, modifier = Modifier.size(20.dp))
+            Slider(
+                value = playerState.volume,
+                onValueChange = { playerState.volume = it },
+                valueRange = 0f..1f,
+                modifier = Modifier.width(100.dp)
+            )
+
+            Spacer(Modifier.weight(1f))
+
+            // Fullscreen
+            IconButton(onClick = { playerState.toggleFullscreen() }) {
+                Icon(
+                    painter = if (playerState.isFullscreen) painterResource(Res.drawable.ic_minimize) else painterResource(Res.drawable.ic_full_size),
+                    contentDescription = "Toggle Fullscreen",
+                    tint = Color.White
+                )
+            }
+        }
+    }
+}
+
+// helper format duration
+fun formatDuration(ms: Long): String {
+    val totalSeconds = ms / 1000
+    val minutes = (totalSeconds / 60) % 60
+    val seconds = totalSeconds % 60
+    val hours = totalSeconds / 3600
+
+    return if (hours > 0) {
+        "${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
+    } else {
+        "${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
+    }
+}
+
+
+
+```
+
+
+
+
+
